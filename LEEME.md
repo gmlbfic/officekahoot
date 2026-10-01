@@ -31,4 +31,4 @@ Los nombres exactos de los menús de Vercel pueden cambiar; si algo no coincide,
 
 ## Privacidad
 
-No se piden nombres ni datos. Cada celular usa un identificador anónimo y las respuestas se borran solas a las 48 horas.
+Cada participante elige un nombre o apodo (máximo 20 caracteres) y recibe un ícono al azar. El nombre se muestra en la pantalla grande, también junto al personaje que le tocó. No se pide ningún otro dato y todo se borra solo a las 48 horas.
