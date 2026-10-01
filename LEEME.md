@@ -8,7 +8,7 @@ Un solo link para todos:
 
 1. **GitHub.** Creá un repositorio nuevo (puede ser privado), por ejemplo `quiz-office-vivo`. En la pantalla del repo vacío, elegí "uploading an existing file" y arrastrá todo el contenido de esta carpeta: `index.html`, `app.js`, `data.js`, `package.json` y las carpetas `api` e `img`. Confirmá con "Commit changes".
 2. **Vercel.** "Add New… → Project", importá ese repositorio. En "Framework Preset" dejá **Other**. Deploy.
-3. **Base de datos.** Dentro del proyecto en Vercel: pestaña **Storage** → crear o conectar **Upstash for Redis** (desde el Marketplace), plan gratuito, y conectalo a este proyecto. Vercel agrega solo las credenciales.
+3. **Base de datos.** Dentro del proyecto en Vercel: pestaña **Storage** → conectar una base **Redis** a este proyecto (sirve Upstash for Redis o la opción Redis que crea la variable `REDIS_URL`), plan gratuito. Vercel agrega solo las credenciales y el quiz detecta cuál de las dos usás.
 4. **Tu clave de presentador.** Settings → Environment Variables → agregá `ADMIN_KEY` con una clave que solo sepas vos.
 5. **Redeploy.** Deployments → en el último, "Redeploy", para que tome la base y la clave.
 6. **Prueba (recomendado el día anterior).** Abrí el link con `?admin=TU_CLAVE` en la compu y entrá desde dos celulares. Pasá un par de preguntas y llegá al final.

@@ -199,9 +199,9 @@ function presenter() {
     let why = "No se pudo contactar al servidor del quiz.";
     let fix = "Revisá que el deploy en Vercel esté terminado y recargá la página.";
     if (e && e.status === 404) { why = "El servidor no encuentra las funciones del quiz (/api)."; fix = "Verificá que la carpeta api esté en la raíz del repositorio y que el proyecto use el preset Other."; }
-    else if (d && (!d.urlVar || !d.tokenVar)) {
-      why = d.redisUrlOnly ? "La base conectada no es Upstash (solo hay REDIS_URL)." : "Falta conectar la base de datos Upstash.";
-      fix = "En Vercel: Storage, conectar Upstash for Redis a este proyecto y después Redeploy.";
+    else if (d && d.modo === "sin_base") {
+      why = "No hay ninguna base de datos conectada al proyecto.";
+      fix = "En Vercel: Storage, conectar una base Redis (Upstash o Redis) a este proyecto y después Redeploy.";
     } else if (e && e.data && e.data.error) { why = "La base de datos respondió con un error: " + e.data.error; }
     app.innerHTML = `<section class="sheet err"><h2 class="qtext">No hay conexión con el servidor</h2>
       <p><b>${esc(why)}</b></p><p>${esc(fix)}</p>
