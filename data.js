@@ -58,11 +58,11 @@ const Q = [
   ["Una valija armada y un pasaje a cualquier lado","🧳","JI","MI"]]},
  {q:"Te gusta alguien. ¿Qué hacés?", c:"#F4B48C", o:[
   ["Una declaración pública, con globos y un cartel con su nombre","🎈","MI","DW"],
-  ["La hacés reír todos los días: dos tazas con un chiste dibujado","☕","JI","PA"],
+  ["La hacés reír todos los días","☕","JI","PA"],
   ["Le proponés un contrato de relación con cláusulas","📜","DW","OS"],
   ["Le hacés un dibujo que nunca le vas a dar","✏️","PA","TO"],
   ["Tenés cinco chats abiertos a la vez","💬","RY","ME"],
-  ["La mirás de lejos: una taza sola junto a la ventana","🌧️","TO","PA"]]},
+  ["La mirás de lejos, en silencio","🌧️","TO","PA"]]},
  {q:"Te toca organizar una fiesta. ¿Cómo es?", c:"#F7D56A", o:[
   ["Temática: vos. Con karaoke","🎤","MI","ME"],
   ["Decoración hecha a mano hasta las 3 a. m.","✂️","PA","KE"],
@@ -84,3 +84,28 @@ function scoreFrom(ans){
   const ranked = [...ORDER].sort((a, b) => s[b] - s[a] || p[b] - p[a] || ORDER.indexOf(a) - ORDER.indexOf(b));
   return { s, ranked };
 }
+
+// ---------- Cierre grupal: diagnóstico de la oficina ----------
+const DIAG = {
+  DW: ["Régimen de seguridad", "Esta oficina tiene protocolo para todo, incluido el protocolo. Hay un plan de evacuación que nadie pidió y alguien ya está anotando quién llegó tarde."],
+  JI: ["Productividad opcional", "Acá se trabaja lo justo y se bromea lo necesario. Nadie sabe bien en qué está el otro, pero todos saben quién escondió la abrochadora."],
+  MI: ["Caos con buenas intenciones", "Esta oficina es una reunión que podría haber sido un mail, con karaoke incluido. Mucho cariño, cero agenda y un discurso a punto de empezar."],
+  PA: ["La oficina sensible", "Acá alguien se acuerda de los cumpleaños, alguien decora y todos se guardan lo que piensan. Funciona, pero con muchas cosas sin decir."],
+  OS: ["El club de los que tienen razón", "Toda conversación termina con un dato corregido. Es la oficina más culta y la más agotadora para discutir sobre cualquier cosa."],
+  KE: ["El área de catering", "Las reuniones se miden por lo que hay para picar. Productividad baja, felicidad alta, y siempre falta pan."],
+  RY: ["Startup sin producto", "Muchas ideas disruptivas, ninguna entregada. Esta oficina tiene más tarjetas personales que clientes."],
+  ME: ["After office permanente", "Nadie recuerda bien cómo terminó la última reunión. Lo que pasa en esta oficina queda en esta oficina, si alguien se acuerda."],
+  TO: ["Recursos Humanos en pleno", "La oficina más sensata y la menos escuchada. Hay un reglamento para todo y nadie lo leyó."],
+};
+const DIAG_TWIST = {
+  DW: "alguien está armando un búnker por las dudas.",
+  JI: "hay una broma en preparación ahora mismo.",
+  MI: "en cualquier momento alguien arranca un discurso.",
+  PA: "alguien dibuja en silencio mientras los demás discuten.",
+  OS: "alguien está a punto de decir «en realidad…».",
+  KE: "la heladera es zona compartida, pero no tanto.",
+  RY: "alguien acaba de lanzar un emprendimiento.",
+  ME: "la reunión siempre termina en el bar.",
+  TO: "alguien ya está escribiendo un informe sobre esto.",
+};
+const DIAG_BALANCED = ["Oficina sin dueño", "No manda nadie y opina todo el mundo. Hay un poco de cada personaje, que es la receta exacta para que una reunión no termine nunca."];

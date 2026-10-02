@@ -1,4 +1,4 @@
-// ¿Qué personaje de The Office sos? — modo en vivo
+// ¿Y vos qué personaje de The Office serías? — modo en vivo
 // Un solo link: con ?admin=CLAVE abre el modo presentador; sin clave, el modo jugador.
 
 const app = document.getElementById("app");
@@ -83,7 +83,7 @@ function player() {
   function renderForm() {
     if (document.getElementById("profileForm")) return; // no pisar lo que la persona está escribiendo
     let icon = randomIcon();
-    app.innerHTML = `<section class="intro"><h1>¿Qué personaje de The Office sos?</h1>
+    app.innerHTML = `<section class="intro"><h1>¿Y vos qué personaje de The Office serías?</h1>
       <form class="sheet profile" id="profileForm" autocomplete="off">
         <label for="nm">¿Cómo te llamamos?</label>
         <input id="nm" maxlength="20" placeholder="Tu nombre o apodo" required>
@@ -138,9 +138,9 @@ function player() {
 
   function render() {
     if (!profile && !offline) { renderForm(); return; }
-    if (!st) { app.innerHTML = `<section class="intro"><h1>¿Qué personaje de The Office sos?</h1><p>Conectando con la pantalla grande…</p></section>`; return; }
+    if (!st) { app.innerHTML = `<section class="intro"><h1>¿Y vos qué personaje de The Office serías?</h1><p>Conectando con la pantalla grande…</p></section>`; return; }
     if (st.phase === "lobby") {
-      app.innerHTML = `<section class="intro"><h1>¿Qué personaje de The Office sos?</h1>
+      app.innerHTML = `<section class="intro"><h1>¿Y vos qué personaje de The Office serías?</h1>
         <div class="memo"><b>Ya estás adentro, ${esc(profile.icon)} ${esc(profile.name)}.</b> Esperá a que arranque el test en la pantalla grande.</div></section>`;
       return;
     }
@@ -185,6 +185,8 @@ function player() {
 function presenter() {
   document.body.classList.add("pres");
   let st = null, lastKey = "", busy = false;
+  let fstep = 0, revealed = {}, lastSig = "";
+  const FINAL_STEPS = 4; // 0 diagnóstico, 1 revelación, 2 premios, 3 reparto completo
 
   async function control(action) {
     if (busy) return; busy = true;
@@ -232,6 +234,84 @@ function presenter() {
   const facesHTML = () => `<div class="faces" aria-label="Quién respondió">${(st.people || [])
     .map((p) => `<span class="${p.answered ? "on" : ""}" title="${esc(p.name)}">${esc(p.icon)}</span>`).join("")}</div>`;
 
+  // ---------- Cálculos del cierre grupal ----------
+  function groupCounts() {
+    const byChar = {};
+    (st.people || []).forEach((p) => { if (p.result && CH[p.result]) (byChar[p.result] = byChar[p.result] || []).push(p); });
+    const order = ORDER.filter((k) => byChar[k]).sort((a, b) => byChar[b].length - byChar[a].length || ORDER.indexOf(a) - ORDER.indexOf(b));
+    const total = order.reduce((t, k) => t + byChar[k].length, 0);
+    return { byChar, order, total };
+  }
+
+  function diagnosisHTML() {
+    const { byChar, order, total } = groupCounts();
+    if (!total) return `<p class="count">Esperando resultados…</p>`;
+    const top = order[0], second = order[1];
+    const balanced = order.length >= 4 && byChar[top].length / total <= 0.35;
+    const [title, text] = balanced ? DIAG_BALANCED : DIAG[top];
+    const twist = !balanced && second ? `<p class="twist">Con un toque de ${CH[second].name.split(" ")[0]}: ${DIAG_TWIST[second]}</p>` : "";
+    return `<p class="field">Diagnóstico de la oficina</p><h1 class="big diag">${esc(title)}</h1>
+      <p class="diagtext">${esc(text)}</p>${twist}`;
+  }
+
+  function revealHTML(animate) {
+    const { byChar, order, total } = groupCounts();
+    if (!total) return `<p class="count">Esperando resultados…</p>`;
+    const max = byChar[order[0]].length;
+    const winners = order.filter((k) => byChar[k].length === max);
+    const rest = order.filter((k) => !winners.includes(k)).reverse(); // de menos a más
+    const rows = rest.map((k, i) => `<div class="rrow ${animate ? "hide" : ""}" data-d="${i}">
+        <span class="remb">${CH[k].emblem}</span><span class="rname" style="color:${CH[k].color}">${CH[k].name}</span>
+        <span class="rcount">${byChar[k].length}</span><div class="chips">${byChar[k].map(chip).join("")}</div></div>`).join("");
+    const winTitle = winners.length > 1
+      ? `Disputa territorial: ${winners.map((k) => CH[k].name.split(" ")[0]).join(" y ")}`
+      : `La oficina es de ${CH[winners[0]].name}`;
+    const win = `<div class="winner ${animate ? "hide" : ""}" data-d="${rest.length}" style="--wc:${CH[winners[0]].color}">
+        <div class="stamp">${winners.length > 1 ? "EMPATE" : "DOMINANTE"}</div>
+        <div class="wemb">${winners.map((k) => CH[k].emblem).join(" ")}</div>
+        <h1 class="big">${esc(winTitle)}</h1>
+        <p class="field">${max} de ${total} ${total === 1 ? "persona" : "personas"}${winners.length > 1 ? " cada uno" : ""}</p>
+        <div class="chips">${winners.flatMap((k) => byChar[k]).map(chip).join("")}</div></div>`;
+    return `<p class="field">¿De quién es esta oficina?</p><div class="reveal">${rows}${win}</div>`;
+  }
+
+  function awardsHTML() {
+    const ppl = (st.people || []).filter((p) => p.result && Array.isArray(p.answers) && p.answers.some((a) => a != null));
+    if (ppl.length < 2) return `<p class="count">Los premios necesitan al menos dos participantes.</p>`;
+    const cards = [];
+    // Almas gemelas: el par con más respuestas iguales
+    let best = null;
+    for (let i = 0; i < ppl.length; i++) for (let j = i + 1; j < ppl.length; j++) {
+      let same = 0, both = 0;
+      ppl[i].answers.forEach((a, q) => { const b = ppl[j].answers[q]; if (a != null && b != null) { both++; if (a === b) same++; } });
+      if (both && (!best || same > best.same)) best = { a: ppl[i], b: ppl[j], same, both };
+    }
+    if (best && best.same > 0) cards.push(["💞", "Almas gemelas", `${chip(best.a)} ${chip(best.b)}`, `${best.same} de ${best.both} respuestas iguales`]);
+    // Pureza: qué tan concentrado está el puntaje en el personaje principal
+    const purity = ppl.map((p) => { const { s, ranked } = scoreFrom(p.answers); const tot = Object.values(s).reduce((t, v) => t + v, 0) || 1; return { p, top: ranked[0], share: s[ranked[0]] / tot }; })
+      .sort((x, y) => y.share - x.share);
+    const pure = purity[0];
+    cards.push([CH[pure.top].emblem, `La persona más ${CH[pure.top].name.split(" ")[0]} de la sala`, chip(pure.p), `${Math.round(pure.share * 100)} % ${CH[pure.top].name.split(" ")[0]}`]);
+    const mixed = purity[purity.length - 1];
+    if (ppl.length >= 3 && mixed.p !== pure.p) cards.push(["🌀", "Indescifrable", chip(mixed.p), `Su puntaje está repartido entre varios personajes`]);
+    // Oveja negra: más elecciones que nadie más hizo
+    const picks = Array.from({ length: Q.length }, () => ({}));
+    ppl.forEach((p) => p.answers.forEach((a, q) => { if (a != null) picks[q][a] = (picks[q][a] || 0) + 1; }));
+    const lone = ppl.map((p) => ({ p, n: p.answers.filter((a, q) => a != null && picks[q][a] === 1).length })).sort((x, y) => y.n - x.n);
+    if (ppl.length >= 3 && lone[0].n > 0) cards.push(["🐑", "La oveja negra", chip(lone[0].p), `${lone[0].n} ${lone[0].n === 1 ? "respuesta que nadie más eligió" : "respuestas que nadie más eligió"}`]);
+    return `<p class="field">Premios de la oficina</p><div class="awards">${cards.map(([e, t, who, d]) =>
+      `<div class="award"><div class="aemb">${e}</div><h3>${esc(t)}</h3><div class="chips">${who}</div><p>${esc(d)}</p></div>`).join("")}</div>`;
+  }
+
+  function runReveal() {
+    const items = [...app.querySelectorAll(".reveal .hide")];
+    const reduce = window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches;
+    items.forEach((el) => {
+      const d = +el.dataset.d, last = el.classList.contains("winner");
+      setTimeout(() => el.classList.remove("hide"), reduce ? 0 : (last ? d * 1100 + 1200 : d * 1100 + 300));
+    });
+  }
+
   function tallyHTML() {
     const byChar = {};
     (st.people || []).forEach((p) => { if (p.result && CH[p.result]) (byChar[p.result] = byChar[p.result] || []).push(p); });
@@ -247,6 +327,8 @@ function presenter() {
   function render() {
     const key = [st.round, st.phase, st.q].join("|");
     const full = key !== lastKey; lastKey = key;
+    if (st.phase !== "final") fstep = 0;
+    if (st.phase === "final") { renderFinal(full); return; }
     const live = document.getElementById("live");
     if (!full && live) {
       live.innerHTML = st.phase === "lobby" ? `${st.players} conectados`
@@ -257,7 +339,7 @@ function presenter() {
     }
     if (st.phase === "lobby") {
       app.innerHTML = `<section class="sheet lobby">
-        <div><h1 class="big">¿Qué personaje de The Office sos?</h1>
+        <div><h1 class="big">¿Y vos qué personaje de The Office serías?</h1>
           <p class="url">Escaneá el código o entrá a<br><b>${esc(PUBLIC_URL)}</b></p>
           <p class="count" id="live">${st.players} conectados</p>
           <div id="people">${peopleHTML()}</div>
@@ -280,20 +362,44 @@ function presenter() {
       document.getElementById("next").onclick = () => control("next");
       return;
     }
-    app.innerHTML = `<section class="sheet tally"><h1 class="big">Así quedó la oficina</h1>
-      <p>Cada uno tiene su expediente en el celular.</p>
-      <div id="live">${tallyHTML()}</div>
-      <div class="controls" style="margin-top:24px"><button class="btn ghost" id="back">Volver a la última pregunta</button>
-      <button class="btn ghost" id="reset">Nueva ronda</button></div></section>`;
-    document.getElementById("back").onclick = () => control("prev");
-    document.getElementById("reset").onclick = () => { if (confirm("¿Empezar una ronda nueva? Las respuestas de esta ronda dejan de contar.")) control("reset"); };
+    renderFinal(full);
   }
+
+  function renderFinal(force) {
+    const sig = (st.people || []).map((p) => p.result || "-").join(",");
+    if (!force && sig === lastSig) return;
+    if (!force && fstep === 1 && revealed[st.round] !== "done") return; // no interrumpir la revelación
+    lastSig = sig;
+    let body;
+    if (fstep === 0) body = diagnosisHTML();
+    else if (fstep === 1) body = revealHTML(force && !revealed[st.round]);
+    else if (fstep === 2) body = awardsHTML();
+    else body = `<h1 class="big">Así quedó la oficina</h1><p>Cada uno tiene su expediente en el celular.</p><div id="live">${tallyHTML()}</div>`;
+    const last = fstep === FINAL_STEPS - 1;
+    app.innerHTML = `<span class="tab">Cierre ${fstep + 1} de ${FINAL_STEPS}</span>
+      <section class="sheet tally">${body}
+      <div class="controls" style="margin-top:24px">
+        <button class="btn ghost" id="back">Anterior</button>
+        ${last ? `<button class="btn ghost" id="reset">Nueva ronda</button>` : `<button class="btn" id="fnext">Siguiente</button>`}
+      </div></section>`;
+    if (fstep === 1 && force && !revealed[st.round]) {
+      revealed[st.round] = "running"; runReveal();
+      const n = app.querySelectorAll(".reveal .hide").length;
+      setTimeout(() => { revealed[st.round] = "done"; }, n * 1100 + 1600);
+    }
+    document.getElementById("back").onclick = () => finalBack();
+    const nx = document.getElementById("fnext"); if (nx) nx.onclick = () => finalNext();
+    const rs = document.getElementById("reset");
+    if (rs) rs.onclick = () => { if (confirm("¿Empezar una ronda nueva? Las respuestas de esta ronda dejan de contar.")) control("reset"); };
+  }
+  function finalNext() { if (fstep < FINAL_STEPS - 1) { fstep++; renderFinal(true); } }
+  function finalBack() { if (fstep > 0) { fstep--; renderFinal(true); } else control("prev"); }
 
   // Atajos de teclado para manejarlo con un control de presentaciones
   document.addEventListener("keydown", (e) => {
     if (!st) return;
-    if (["ArrowRight", "PageDown", " "].includes(e.key)) { e.preventDefault(); control(st.phase === "lobby" ? "start" : "next"); }
-    if (["ArrowLeft", "PageUp"].includes(e.key) && st.phase !== "lobby") { e.preventDefault(); control("prev"); }
+    if (["ArrowRight", "PageDown", " "].includes(e.key)) { e.preventDefault(); if (st.phase === "final") finalNext(); else control(st.phase === "lobby" ? "start" : "next"); }
+    if (["ArrowLeft", "PageUp"].includes(e.key) && st.phase !== "lobby") { e.preventDefault(); if (st.phase === "final") finalBack(); else control("prev"); }
   });
 
   app.innerHTML = `<section class="intro"><h1>Conectando…</h1></section>`;

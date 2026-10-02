@@ -1,4 +1,4 @@
-# ¿Qué personaje de The Office sos? — modo en vivo
+# ¿Y vos qué personaje de The Office serías? — modo en vivo
 
 Un solo link para todos:
 - **Vos (proyector):** `https://TU-PROYECTO.vercel.app/?admin=TU_CLAVE`

@@ -1,4 +1,4 @@
-import { redis, K, isAdmin, getState, DIAG } from "./_lib.js";
+import { redis, K, NQ, isAdmin, getState, DIAG } from "./_lib.js";
 
 const parse = (v) => { if (typeof v === "string") { try { return JSON.parse(v); } catch { return null; } } return v; };
 
@@ -11,12 +11,20 @@ export default async function handler(req, res) {
     p.hgetall(K.people(st.round));
     p.hkeys(K.answers(st.round, st.q));
     p.hgetall(K.results(st.round));
-    const [peopleRaw, answeredPids, resultsRaw] = await p.exec();
+    // En la etapa final también se leen todas las respuestas, para los premios del grupo.
+    const finalPhase = st.phase === "final";
+    if (finalPhase) for (let i = 0; i < NQ; i++) p.hgetall(K.answers(st.round, i));
+    const [peopleRaw, answeredPids, resultsRaw, ...allAnswers] = await p.exec();
     const answeredSet = new Set(answeredPids || []);
     const results = resultsRaw || {};
     // Al presentador solo le llegan nombre, ícono, si respondió y su personaje; nunca los identificadores.
     const people = Object.entries(peopleRaw || {})
-      .map(([pid, v]) => { const o = parse(v) || {}; return { name: o.name || "Alguien", icon: o.icon || "🙂", answered: answeredSet.has(pid), result: results[pid] || null }; })
+      .map(([pid, v]) => {
+        const o = parse(v) || {};
+        const person = { name: o.name || "Alguien", icon: o.icon || "🙂", answered: answeredSet.has(pid), result: results[pid] || null };
+        if (finalPhase) person.answers = allAnswers.map((h) => { const c = h && h[pid]; const n = c == null ? null : Number(c); return Number.isInteger(n) ? n : null; });
+        return person;
+      })
       .sort((a, b) => a.name.localeCompare(b.name, "es"));
     return res.status(200).json({
       ...st, admin: true, people,
